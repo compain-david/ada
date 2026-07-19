@@ -226,6 +226,7 @@
   </div>
 
   <div class="bar">
+    <button id="btn-demo">🎲 Charger la démo</button>
     <button class="danger" id="btn-reset">🗑️ Réinitialiser tout</button>
   </div>
 </div>
@@ -687,6 +688,35 @@ if(!IS_DISPLAY){
   document.getElementById("btn-podium-step").onclick=()=>{ state.vueActive="D"; state.podiumStep=Math.min((state.podiumStep||0)+1,4); pushState(); };
   document.getElementById("btn-podium-reset").onclick=()=>{ state.podiumStep=0; pushState(); };
   document.getElementById("btn-reset").onclick=()=>{ if(confirm("Tout réinitialiser ? (équipes, rangs, révélations)")){ state=freshState(); pushState(); } };
+
+  /* ---- MODE DÉMO ---- */
+  function loadDemo(){
+    const DEMO_TEAMS=[
+      {nom:"Les Licornes", membres:["Alix","David","Camille","Léa","Tom","Nina","Hugo"]},
+      {nom:"Les Dragons",  membres:["Marc","Julie","Sarah","Paul","Emma","Lucas","Chloé"]},
+      {nom:"Les Renards",  membres:["Théo","Manon","Jade","Noah","Inès","Enzo","Zoé"]},
+      {nom:"Les Pandas",   membres:["Louis","Anna","Léo","Mila","Adam","Rose","Ethan"]},
+      {nom:"Les Requins",  membres:["Nathan","Lina","Gabin","Alice","Sacha","Nora","Yanis"]},
+      {nom:"Les Tigres",   membres:["Maël","Eva","Rayan","Lou","Axel","Jeanne","Ilan"]},
+      {nom:"Les Aigles",   membres:["Timéo","Léna","Naël","Ambre","Kylian","Iris","Aaron"]},
+      {nom:"Les Loups",    membres:["Ryan","Célia","Noé","Romane","Adam","Lisa","Mohamed"]},
+      {nom:"Les Ours",     membres:["Isaac","Louna","Sami","Norah","Elio","Maya","Gabriel"]},
+      {nom:"Les Hiboux",   membres:["Marius","Anaïs","Jules","Lya","Malo","Sofia","Nolan"]}
+    ];
+    // rangs par épreuve, index = id d'équipe -1 (E2 contient un ex aequo pour la 1re place)
+    const DEMO_RANKS=[
+      [3,1,4,2,6,5,8,7,10,9],
+      [1,1,3,5,4,7,6,9,8,10],
+      [10,9,8,7,6,5,4,3,2,1],
+      [2,4,1,3,6,8,5,7,9,10],
+      [5,3,7,1,9,2,10,4,8,6]
+    ];
+    state=freshState();
+    DEMO_TEAMS.forEach((t,i)=>{ state.equipes[i].nom=t.nom; state.equipes[i].membres=t.membres.slice(); });
+    DEMO_RANKS.forEach((arr,ei)=>{ arr.forEach((r,ti)=>{ state.epreuves[ei].rangs[ti+1]=r; }); state.epreuves[ei].revelee = ei<4; }); // 4 révélées, la 5e prête à révéler
+    state.vueActive="B"; state.podiumStep=0; state.ordreManuel=null;
+  }
+  document.getElementById("btn-demo").onclick=()=>{ if(confirm("Charger la démo ? (remplace la saisie actuelle : 10 équipes, 4 épreuves révélées, la 5e prête à révéler)")){ loadDemo(); pushState(); } };
 
   renderControl(); updateSaveStatus();
 }

@@ -26,6 +26,10 @@ Tableau de bord de soirée pour animer un tournoi par équipes, **100 % local**,
 3. Dans la fenêtre contrôle : **« 📄 Importer un CSV »** (ou « 📋 Coller un CSV »).
 4. Le jour J, tape les **noms d'équipe** directement dans l'éditeur.
 
+## Tester tout de suite (mode démo)
+
+En bas de la fenêtre contrôle, clique **« 🎲 Charger la démo »** : ça remplit 10 équipes (noms, couleurs, membres) avec 4 épreuves déjà révélées et la 5e prête à révéler. Tu peux alors parcourir toutes les vues, jouer la révélation de la dernière épreuve, dérouler le podium et tester le départage — sans rien saisir. Un **« 🗑️ Réinitialiser tout »** efface la démo quand tu veux passer au vrai.
+
 ## Déroulé d'une épreuve
 
 1. Dans **« Saisie & révélation »**, entre les **rangs 1→10** de l'épreuve (ex aequo autorisé : `1,1,3,…`). L'affichage ne bouge pas.

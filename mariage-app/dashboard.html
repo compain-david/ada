@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Olympiades — Alix &amp; David</title>
+<style>
+  :root{
+    --bg:#09090B; --surface:#18181B; --border:#27272A;
+    --text:#FAFAFA; --muted:#A1A1AA; --accent:#F59E0B;
+    --up:#22C55E; --down:#EF4444;
+    --f-body:34px; --f-title:72px; --f-huge:104px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    font-feature-settings:"tnum" 1; overflow:hidden;
+  }
+  .tnum{font-variant-numeric:tabular-nums}
+
+  /* ============ FENÊTRE AFFICHAGE (projetée) ============ */
+  #display{position:fixed; inset:0; display:none}
+  body.is-display #display{display:block}
+  body.is-display #control{display:none}
+
+  .stage{position:absolute; inset:0; padding:3vh 3vw; display:none; flex-direction:column}
+  .stage.active{display:flex}
+  .stage h1{font-size:var(--f-title); font-weight:800; letter-spacing:-1px; margin-bottom:2.2vh}
+  .corner{position:absolute; right:2vw; bottom:2vh; color:var(--muted); font-size:20px; letter-spacing:1px}
+
+  /* Vue A : équipes */
+  .teams-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:2vh 1.6vw; flex:1; align-content:center}
+  .team-card{background:var(--surface); border:2px solid var(--border); border-radius:18px; padding:2vh 1.2vw; display:flex; flex-direction:column; gap:1vh}
+  .team-card .head{display:flex; align-items:center; gap:14px}
+  .dot{width:34px; height:34px; border-radius:50%; border:3px solid rgba(255,255,255,.85); flex:none; box-shadow:0 0 0 2px rgba(0,0,0,.4)}
+  .team-card .name{font-size:30px; font-weight:800; line-height:1.05}
+  .team-card ul{list-style:none; display:flex; flex-direction:column; gap:.2vh}
+  .team-card li{font-size:22px; color:var(--muted)}
+
+  /* Vue B : classement */
+  .rank-list{display:flex; flex-direction:column; gap:1.1vh; flex:1; justify-content:center; position:relative}
+  .rrow{display:flex; align-items:center; gap:1.4vw; background:var(--surface); border:2px solid var(--border);
+        border-radius:16px; padding:1.4vh 1.4vw; will-change:transform}
+  .rrow .pos{font-size:var(--f-huge); font-weight:800; width:2.2ch; text-align:center; line-height:.9}
+  .rrow .dot{width:44px;height:44px}
+  .rrow .rname{font-size:44px; font-weight:700; flex:1}
+  .rrow .delta{font-size:30px; width:5ch; text-align:right}
+  .rrow .pts{font-size:var(--f-title); font-weight:800; width:5ch; text-align:right}
+  .rrow.top1{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent), 0 0 40px rgba(245,158,11,.25)}
+  .rrow.top1 .pos{color:var(--accent)}
+  .crown{font-size:46px; margin-left:-.4vw}
+  .rrow.top2{border-color:#D4D4D8}
+  .rrow.top3{border-color:#B45309}
+  .delta.up{color:var(--up)} .delta.down{color:var(--down)} .delta.same{color:var(--muted)}
+
+  /* Vue C : détail */
+  .detail-wrap{flex:1; display:flex; flex-direction:column; gap:1.4vh; min-height:0}
+  .mini-rank{display:grid; grid-template-columns:repeat(5,1fr); gap:1vh 1vw}
+  .mini{display:flex; align-items:center; gap:10px; background:var(--surface); border:2px solid var(--border); border-radius:12px; padding:1vh .8vw}
+  .mini .pos{font-size:34px; font-weight:800; width:1.6ch; text-align:center}
+  .mini .dot{width:24px;height:24px}
+  .mini .nm{font-size:22px; font-weight:600; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .mini .tp{font-size:26px; font-weight:800}
+  table.grid{width:100%; border-collapse:collapse; font-size:24px}
+  table.grid th,table.grid td{border:2px solid var(--border); padding:.8vh .6vw; text-align:center}
+  table.grid th{color:var(--muted); font-weight:600}
+  table.grid td.tm{text-align:left; font-weight:700}
+  table.grid td.tm .dot{width:22px;height:22px;display:inline-block;vertical-align:middle;margin-right:10px}
+  table.grid td.hidden-col{color:var(--border)}
+  table.grid td .rg{font-size:28px; font-weight:800}
+  table.grid td .pt{font-size:18px; color:var(--muted)}
+  table.grid td.best{background:rgba(245,158,11,.14)}
+  table.grid td.tot{font-weight:800; font-size:28px}
+
+  /* Vue E : évolution (SVG) */
+  .evo-wrap{flex:1; display:flex; min-height:0}
+  svg.evo{width:100%; height:100%}
+  svg.evo text{fill:var(--muted); font-size:20px}
+  svg.evo .lbl{fill:var(--text); font-size:22px; font-weight:700}
+
+  /* Vue D : podium */
+  #stage-D{align-items:center; justify-content:center}
+  .podium{display:flex; gap:2vw; align-items:flex-end; justify-content:center; width:100%}
+  .pod{background:var(--surface); border:2px solid var(--border); border-radius:20px; padding:3vh 2vw; text-align:center; display:flex; flex-direction:column; align-items:center; gap:1.4vh; opacity:0; transform:translateY(40px); transition:opacity .6s ease, transform .6s ease}
+  .pod.show{opacity:1; transform:none}
+  .pod .medal{font-size:64px}
+  .pod .dot{width:60px;height:60px}
+  .pod .pname{font-size:52px; font-weight:800}
+  .pod .ptot{font-size:40px; color:var(--accent); font-weight:800}
+  .pod ul{list-style:none; display:flex; flex-direction:column; gap:.3vh}
+  .pod li{font-size:24px; color:var(--muted)}
+  .pod.p1{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent),0 0 60px rgba(245,158,11,.3)}
+  .pod.p1 .pname{font-size:72px}
+  .pod.p2{border-color:#D4D4D8}
+  .pod.p3{border-color:#B45309}
+  .pod.p1.solo{transform:scale(1.06)}
+
+  /* reveal overlay */
+  #reveal-overlay{position:absolute; inset:0; background:rgba(9,9,11,.97); display:none; flex-direction:column; padding:4vh 5vw; z-index:5}
+  #reveal-overlay.on{display:flex}
+  #reveal-overlay h2{font-size:56px; font-weight:800; margin-bottom:2vh; color:var(--accent)}
+  .rev-list{display:flex; flex-direction:column; gap:1vh; flex:1; justify-content:center}
+  .rev-item{display:flex; align-items:center; gap:1.4vw; background:var(--surface); border:2px solid var(--border); border-radius:14px; padding:1.2vh 1.4vw; opacity:0; transform:translateY(24px); transition:opacity .5s, transform .5s}
+  .rev-item.show{opacity:1; transform:none}
+  .rev-item .rrank{font-size:56px; font-weight:800; width:2ch; text-align:center; color:var(--muted)}
+  .rev-item.first .rrank{color:var(--accent)}
+  .rev-item .dot{width:38px;height:38px}
+  .rev-item .rn{font-size:40px; font-weight:700; flex:1}
+  .rev-item .rp{font-size:36px; font-weight:800}
+
+  /* placeholder when no display opened / no data */
+  .placeholder{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:32px; text-align:center; padding:6vw}
+
+  /* ============ FENÊTRE CONTRÔLE ============ */
+  #control{position:fixed; inset:0; overflow:auto; padding:22px; max-width:1200px; margin:0 auto}
+  #control h1{font-size:26px; margin-bottom:4px}
+  #control .sub{color:var(--muted); font-size:14px; margin-bottom:18px}
+  .bar{display:flex; flex-wrap:wrap; gap:10px; margin-bottom:18px; align-items:center}
+  button{font:inherit; cursor:pointer; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); padding:10px 14px; font-size:15px}
+  button:hover{border-color:#3f3f46}
+  button.primary{background:#2563EB; border-color:#2563EB}
+  button.accent{background:var(--accent); border-color:var(--accent); color:#111}
+  button.danger{background:#3f1d1d; border-color:#7f1d1d}
+  button:disabled{opacity:.4; cursor:not-allowed}
+  .navbtn.active{background:#2563EB; border-color:#2563EB}
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:16px}
+  .card h2{font-size:17px; margin-bottom:12px}
+  .status{font-size:13px; padding:4px 10px; border-radius:999px; border:1px solid var(--border)}
+  .status.ok{color:var(--up); border-color:#14532d}
+  .status.warn{color:var(--accent); border-color:#78350f}
+  details{margin-bottom:10px; border:1px solid var(--border); border-radius:10px; padding:10px 12px}
+  summary{cursor:pointer; font-weight:600}
+  .teamrow{display:grid; grid-template-columns:26px 120px 1fr; gap:8px; align-items:center; margin:8px 0}
+  input,textarea{font:inherit; background:#0d0d0f; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px}
+  input[type=color]{padding:2px; height:34px; width:44px}
+  .members{display:grid; grid-template-columns:repeat(4,1fr); gap:6px}
+  .ep-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin:10px 0}
+  .ep-in{display:flex; align-items:center; gap:8px}
+  .ep-in .cdot{width:16px;height:16px;border-radius:50%;border:1px solid #fff;flex:none}
+  .ep-in input{width:70px}
+  .ep-in .nm{flex:1; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .msg{font-size:13px; margin-top:6px}
+  .msg.err{color:var(--down)} .msg.ok{color:var(--up)}
+  .hint{color:var(--muted); font-size:13px}
+  .ctrl-detail{max-height:280px; overflow:auto; border:1px solid var(--border); border-radius:10px}
+</style>
+</head>
+<body>
+
+<!-- ===================== AFFICHAGE ===================== -->
+<div id="display">
+  <div id="stage-A" class="stage"><h1>Les équipes</h1><div class="teams-grid" id="d-teams"></div></div>
+
+  <div id="stage-B" class="stage"><h1>Classement général</h1><div class="rank-list" id="d-rank"></div></div>
+
+  <div id="stage-C" class="stage"><h1>Détail par épreuve</h1>
+    <div class="detail-wrap">
+      <div class="mini-rank" id="d-minirank"></div>
+      <div style="flex:1; min-height:0; overflow:hidden"><div id="d-detail"></div></div>
+    </div>
+  </div>
+
+  <div id="stage-E" class="stage"><h1>Évolution du classement</h1><div class="evo-wrap"><svg class="evo" id="d-evo" preserveAspectRatio="none"></svg></div></div>
+
+  <div id="stage-D" class="stage"><div class="podium" id="d-podium"></div></div>
+
+  <div id="reveal-overlay"><h2 id="rev-title">Résultats</h2><div class="rev-list" id="rev-list"></div></div>
+  <div class="corner" id="d-corner">Alix &amp; David</div>
+  <div class="placeholder" id="d-placeholder">En attente du contrôle…</div>
+</div>
+
+<!-- ===================== CONTRÔLE ===================== -->
+<div id="control">
+  <h1>🏆 Contrôle — Olympiades Alix &amp; David</h1>
+  <div class="sub">Fenêtre de pilotage (non projetée). Ouvre l'affichage sur le 2e écran.</div>
+
+  <div class="bar">
+    <button class="primary" id="btn-open">🖥️ Ouvrir l'affichage</button>
+    <span style="width:12px"></span>
+    <button class="navbtn" data-v="A">1 · Équipes</button>
+    <button class="navbtn" data-v="B">2 · Classement</button>
+    <button class="navbtn" data-v="C">3 · Détail</button>
+    <button class="navbtn" data-v="E">4 · Évolution</button>
+    <button class="navbtn" data-v="D">5 · Podium</button>
+    <span style="flex:1"></span>
+    <span class="status" id="save-status">—</span>
+  </div>
+
+  <div class="card">
+    <h2>1 · Équipes <span class="hint">(import CSV, puis édition ; les noms se tapent le jour J)</span></h2>
+    <div class="bar" style="margin-bottom:10px">
+      <label class="button" style="display:inline-block">📄 Importer un CSV<input type="file" id="csv-file" accept=".csv,text/csv" style="display:none"></label>
+      <button id="btn-paste">📋 Coller un CSV</button>
+      <span class="hint">Format : <code>nom;couleur;membre1;…;membre7</code> (nom optionnel)</span>
+    </div>
+    <textarea id="csv-paste" placeholder="Colle ici le contenu CSV puis clique Importer le texte…" style="display:none;width:100%;height:120px;margin-bottom:8px"></textarea>
+    <button id="btn-paste-go" style="display:none;margin-bottom:10px">Importer le texte collé</button>
+    <div id="teams-editor"></div>
+    <div class="msg" id="csv-msg"></div>
+  </div>
+
+  <div class="card">
+    <h2>2 · Saisie &amp; révélation des épreuves</h2>
+    <div class="hint" style="margin-bottom:8px">Saisis les rangs 1→10 (ex aequo autorisé : 1,1,3,…). L'affichage ne bouge pas avant « Révéler ».</div>
+    <div id="events-editor"></div>
+  </div>
+
+  <div class="card">
+    <h2>3 · Podium &amp; départage</h2>
+    <div class="bar">
+      <button id="btn-podium-step">▶️ Étape podium suivante (3e → 2e → 1er)</button>
+      <button id="btn-podium-reset">↺ Recommencer le podium</button>
+    </div>
+    <details>
+      <summary>Départage manuel du sommet (épreuve de barrage)</summary>
+      <div class="hint" style="margin:8px 0">Par défaut, le classement départage automatiquement (palmarès rang par rang). Utilise ceci seulement après une épreuve de barrage.</div>
+      <div id="tiebreak-editor"></div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>4 · Détail complet (pour toi, défilable)</h2>
+    <div class="ctrl-detail" id="ctrl-detail"></div>
+  </div>
+
+  <div class="bar">
+    <button class="danger" id="btn-reset">🗑️ Réinitialiser tout</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ================= CONSTANTES ================= */
+const BAREME = {1:12,2:10,3:8,4:7,5:6,6:5,7:4,8:3,9:2,10:1};
+const N_TEAMS = 10, N_MEMBERS = 7, N_EVENTS = 5;
+const EVENT_NAMES = ["Head Shoulder Knee Cup","Ballon dans gobelet","Plateau à ficelles","Kahoot","Tir à la corde"];
+const DEFAULT_COLORS = ["#EF4444","#F97316","#FACC15","#84CC16","#22C55E","#14B8A6","#06B6D4","#3B82F6","#8B5CF6","#EC4899"];
+const STORE_KEY = "olympiades_alix_david_v1";
+const IS_DISPLAY = new URLSearchParams(location.search).has("display");
+
+/* ================= ÉTAT ================= */
+function freshState(){
+  return {
+    equipes: Array.from({length:N_TEAMS},(_,i)=>({
+      id:i+1, nom:"Équipe "+(i+1), couleur:DEFAULT_COLORS[i],
+      membres:Array.from({length:N_MEMBERS},()=>"")
+    })),
+    epreuves: Array.from({length:N_EVENTS},(_,i)=>({
+      id:i+1, nom:EVENT_NAMES[i], rangs:{}, revelee:false
+    })),
+    vueActive:"A",
+    ordreManuel:null,
+    podiumStep:0
+  };
+}
+let state = freshState();
+
+/* ================= CALCULS ================= */
+// Points d'une épreuve (gère les ex aequo : moyenne des points des rangs occupés)
+function eventPoints(ep){
+  const out={};
+  const byRang={};
+  for(const eqId in ep.rangs){
+    const r = ep.rangs[eqId];
+    if(!r) continue;
+    (byRang[r]=byRang[r]||[]).push(+eqId);
+  }
+  for(const r in byRang){
+    const group=byRang[r]; const start=+r; const k=group.length;
+    let sum=0,cnt=0;
+    for(let p=start; p<start+k; p++){ if(BAREME[p]!=null){ sum+=BAREME[p]; cnt++; } }
+    const pts = cnt? sum/cnt : 0;
+    group.forEach(id=>out[id]=pts);
+  }
+  return out;
+}
+// Total cumulé jusqu'à l'épreuve d'index maxIdx inclus (seulement révélées). maxIdx=-1 => toutes révélées
+function totals(maxIdx){
+  const t={}; state.equipes.forEach(e=>t[e.id]=0);
+  state.epreuves.forEach((ep,idx)=>{
+    if(!ep.revelee) return;
+    if(maxIdx!=null && maxIdx>=0 && idx>maxIdx) return;
+    const p=eventPoints(ep);
+    for(const id in p) t[id]+=p[id];
+  });
+  return t;
+}
+// Palmarès pour départage : nb de 1re place, 2e, ... (rangs stockés sur épreuves révélées)
+function palmares(eqId){
+  const c=Array(11).fill(0);
+  state.epreuves.forEach(ep=>{ if(ep.revelee){ const r=ep.rangs[eqId]; if(r) c[r]++; }});
+  return c;
+}
+function compareTeams(a,b,t){
+  if(t[b.id]!==t[a.id]) return t[b.id]-t[a.id];       // points décroissants
+  const pa=palmares(a.id), pb=palmares(b.id);
+  for(let r=1;r<=10;r++){ if(pb[r]!==pa[r]) return pb[r]-pa[r]; } // + de bons rangs
+  return a.id-b.id;                                    // déterministe
+}
+function classement(maxIdx){
+  const t=totals(maxIdx);
+  let arr=[...state.equipes].sort((a,b)=>compareTeams(a,b,t));
+  // override manuel du sommet
+  if(state.ordreManuel && state.ordreManuel.length){
+    const top=state.ordreManuel.map(id=>arr.find(e=>e.id===id)).filter(Boolean);
+    const rest=arr.filter(e=>!state.ordreManuel.includes(e.id));
+    arr=[...top,...rest];
+  }
+  return arr.map((e,i)=>({eq:e, pos:i+1, total:t[e.id]}));
+}
+// Position de chaque équipe après chaque épreuve révélée (pour Vue E)
+function evolution(){
+  const revealedIdx=[]; state.epreuves.forEach((ep,i)=>{ if(ep.revelee) revealedIdx.push(i); });
+  const cols=revealedIdx.map(idx=>{
+    const cl=classement(idx); const map={}; cl.forEach(r=>map[r.eq.id]=r.pos);
+    return {idx, name:state.epreuves[idx].nom, map};
+  });
+  return {revealedIdx, cols};
+}
+function fmtPts(v){ return (Math.round(v*10)/10).toString().replace(".",","); }
+
+/* ================= VALIDATION SAISIE ================= */
+function validateEvent(ep){
+  const vals=state.equipes.map(e=>ep.rangs[e.id]);
+  if(vals.some(v=>!v)) return {ok:false,msg:"Saisis les 10 rangs."};
+  if(vals.some(v=>v<1||v>10)) return {ok:false,msg:"Rangs entre 1 et 10."};
+  // convention 1..10 avec sauts cohérents pour ex aequo
+  const sorted=[...vals].sort((a,b)=>a-b);
+  let expected=1;
+  for(let i=0;i<sorted.length;){
+    let j=i; while(j<sorted.length && sorted[j]===sorted[i]) j++;
+    const k=j-i;
+    if(sorted[i]!==expected) return {ok:false,msg:"Rangs incohérents (attendu "+expected+", trouvé "+sorted[i]+"). Ex aequo : sauter les rangs (1,1,3…)."};
+    expected+=k; i=j;
+  }
+  return {ok:true,msg:""};
+}
+
+/* ================= PERSISTANCE ================= */
+let saveOk=true;
+function save(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); saveOk=true; }
+  catch(e){ saveOk=false; }
+}
+function load(){
+  try{ const s=localStorage.getItem(STORE_KEY); if(s){ state=Object.assign(freshState(),JSON.parse(s)); return true; } }
+  catch(e){}
+  return false;
+}
+
+/* ============================================================
+   FENÊTRE AFFICHAGE
+   ============================================================ */
+if(IS_DISPLAY){
+  document.body.classList.add("is-display");
+  let lastState=null;
+  window.addEventListener("message",ev=>{
+    const d=ev.data||{};
+    if(d.type==="state"){ state=d.state; document.getElementById("d-placeholder").style.display="none"; renderDisplay(); }
+    else if(d.type==="reveal"){ state=d.state; document.getElementById("d-placeholder").style.display="none"; playReveal(d.epreuveId); }
+  });
+  if(window.opener){ try{ window.opener.postMessage({type:"display-ready"},"*"); }catch(e){} }
+
+  function showStage(v){ document.querySelectorAll(".stage").forEach(s=>s.classList.remove("active")); const el=document.getElementById("stage-"+v); if(el) el.classList.add("active"); }
+
+  // capture des positions pour FLIP
+  function capture(sel){ const m=new Map(); document.querySelectorAll(sel).forEach(el=>m.set(el.dataset.id, el.getBoundingClientRect().top)); return m; }
+  function flip(sel,prev){ document.querySelectorAll(sel).forEach(el=>{ const o=prev.get(el.dataset.id); if(o==null) return; const dy=o-el.getBoundingClientRect().top; if(dy){ el.style.transform="translateY("+dy+"px)"; el.style.transition="none"; requestAnimationFrame(()=>{ el.style.transition="transform .8s cubic-bezier(.22,1,.36,1)"; el.style.transform=""; }); } }); }
+
+  function renderDisplay(animate){
+    showStage(state.vueActive);
+    renderTeamsD(); renderRankD(animate); renderDetailD(); renderEvoD(); renderPodiumD();
+    document.getElementById("d-corner").textContent = "Alix & David";
+  }
+
+  function renderTeamsD(){
+    const g=document.getElementById("d-teams"); g.innerHTML="";
+    state.equipes.forEach(e=>{
+      const c=document.createElement("div"); c.className="team-card";
+      c.innerHTML='<div class="head"><span class="dot" style="background:'+e.couleur+'"></span><span class="name">'+esc(e.nom)+'</span></div>'+
+        '<ul>'+e.membres.filter(m=>m.trim()).map(m=>'<li>'+esc(m)+'</li>').join("")+'</ul>';
+      g.appendChild(c);
+    });
+  }
+
+  let prevPos={};
+  function renderRankD(animate){
+    const list=document.getElementById("d-rank");
+    const prev = animate? capture("#d-rank .rrow") : null;
+    const cl=classement();
+    // deltas vs positions précédentes mémorisées
+    list.innerHTML="";
+    cl.forEach(r=>{
+      const before=prevPos[r.eq.id];
+      let delta="—", dc="same";
+      if(before!=null){ const diff=before-r.pos; if(diff>0){delta="▲ "+diff; dc="up";} else if(diff<0){delta="▼ "+(-diff); dc="down";} }
+      const row=document.createElement("div");
+      row.className="rrow"+(r.pos===1?" top1":r.pos===2?" top2":r.pos===3?" top3":"");
+      row.dataset.id=r.eq.id;
+      row.innerHTML='<span class="pos">'+r.pos+'</span>'+(r.pos===1?'<span class="crown">👑</span>':'')+
+        '<span class="dot" style="background:'+r.eq.couleur+'"></span>'+
+        '<span class="rname">'+esc(r.eq.nom)+'</span>'+
+        '<span class="delta '+dc+'">'+delta+'</span>'+
+        '<span class="pts tnum">'+fmtPts(r.total)+'</span>';
+      list.appendChild(row);
+    });
+    if(animate&&prev) flip("#d-rank .rrow",prev);
+  }
+  function snapshotPositions(){ const cl=classement(); prevPos={}; cl.forEach(r=>prevPos[r.eq.id]=r.pos); }
+
+  function renderDetailD(){
+    // mini classement
+    const mr=document.getElementById("d-minirank"); mr.innerHTML="";
+    classement().forEach(r=>{
+      const d=document.createElement("div"); d.className="mini";
+      d.innerHTML='<span class="pos">'+r.pos+'</span><span class="dot" style="background:'+r.eq.couleur+'"></span><span class="nm">'+esc(r.eq.nom)+'</span><span class="tp tnum">'+fmtPts(r.total)+'</span>';
+      mr.appendChild(d);
+    });
+    // grille
+    const t=totals();
+    const eps=state.epreuves;
+    // meilleur rang par colonne
+    const bestByEp=eps.map(ep=>{ if(!ep.revelee) return null; let best=99; state.equipes.forEach(e=>{ const r=ep.rangs[e.id]; if(r&&r<best) best=r; }); return best; });
+    let html='<table class="grid"><thead><tr><th>Équipe</th>';
+    eps.forEach((ep,i)=>html+='<th>'+esc(ep.nom)+'</th>');
+    html+='<th>Total</th></tr></thead><tbody>';
+    const order=classement();
+    order.forEach(r=>{
+      const e=r.eq;
+      html+='<tr><td class="tm"><span class="dot" style="background:'+e.couleur+'"></span>'+esc(e.nom)+'</td>';
+      eps.forEach((ep,i)=>{
+        if(!ep.revelee){ html+='<td class="hidden-col">—</td>'; return; }
+        const rg=ep.rangs[e.id]; const p=eventPoints(ep)[e.id];
+        const best = bestByEp[i]!=null && rg===bestByEp[i];
+        html+='<td class="'+(best?"best":"")+'"><div class="rg tnum">'+(rg||"–")+'</div><div class="pt tnum">'+(p!=null?fmtPts(p)+" pts":"")+'</div></td>';
+      });
+      html+='<td class="tot tnum">'+fmtPts(t[e.id])+'</td></tr>';
+    });
+    html+='</tbody></table>';
+    document.getElementById("d-detail").innerHTML=html;
+  }
+
+  function renderEvoD(){
+    const svg=document.getElementById("d-evo");
+    const W=1000,H=560, padL=60,padR=220,padT=30,padB=50;
+    const {cols}=evolution();
+    svg.setAttribute("viewBox","0 0 "+W+" "+H);
+    if(cols.length===0){ svg.innerHTML='<text x="'+(W/2)+'" y="'+(H/2)+'" text-anchor="middle">Aucune épreuve révélée</text>'; return; }
+    const n=cols.length;
+    const xFor=i=> n===1? (W-padR+padL)/2 : padL + i*( (W-padR-padL)/(n-1) );
+    const yFor=pos=> padT + (pos-1)*((H-padT-padB)/9);
+    let g="";
+    // axes labels (colonnes)
+    cols.forEach((c,i)=>{ g+='<text x="'+xFor(i)+'" y="'+(H-14)+'" text-anchor="middle">'+esc(shorten(c.name))+'</text>'; });
+    // lignes par équipe
+    state.equipes.forEach(e=>{
+      const pts=cols.map((c,i)=>({x:xFor(i),y:yFor(c.map[e.id])}));
+      if(n>1){
+        let dpath="M"+pts.map(p=>p.x+" "+p.y).join(" L");
+        g+='<path d="'+dpath+'" fill="none" stroke="'+e.couleur+'" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>';
+      }
+      pts.forEach(p=>{ g+='<circle cx="'+p.x+'" cy="'+p.y+'" r="8" fill="'+e.couleur+'" stroke="#fff" stroke-width="2"/>'; });
+      // label en bout de ligne
+      const last=pts[pts.length-1];
+      g+='<circle cx="'+(last.x+22)+'" cy="'+last.y+'" r="7" fill="'+e.couleur+'"/>';
+      g+='<text class="lbl" x="'+(last.x+36)+'" y="'+(last.y+7)+'">'+esc(shorten(e.nom,16))+'</text>';
+    });
+    // repères de rang
+    for(let p=1;p<=10;p++){ g+='<text x="20" y="'+(yFor(p)+7)+'">'+p+'</text>'; }
+    svg.innerHTML=g;
+  }
+
+  function renderPodiumD(){
+    const cont=document.getElementById("d-podium"); cont.innerHTML="";
+    const cl=classement();
+    const top3=[cl[2],cl[1],cl[0]].filter(Boolean); // ordre visuel 3-2-1 (gauche→centre)
+    const step=state.podiumStep||0; // 0 rien,1:3e,2:2e,3:1er
+    const orderVisual=[{r:cl[2],cls:"p3",medal:"🥉",n:3},{r:cl[1],cls:"p2",medal:"🥈",n:2},{r:cl[0],cls:"p1",medal:"🥇",n:1}];
+    orderVisual.forEach(o=>{
+      if(!o.r) return;
+      const shown = (o.n===3&&step>=1)||(o.n===2&&step>=2)||(o.n===1&&step>=3);
+      const solo = o.n===1 && step>=4;
+      const e=o.r.eq;
+      const d=document.createElement("div");
+      d.className="pod "+o.cls+(shown?" show":"")+(solo?" solo":"");
+      d.innerHTML='<div class="medal">'+o.medal+'</div><span class="dot" style="background:'+e.couleur+'"></span>'+
+        '<div class="pname">'+esc(e.nom)+'</div><div class="ptot tnum">'+fmtPts(o.r.total)+' pts</div>'+
+        '<ul>'+e.membres.filter(m=>m.trim()).map(m=>'<li>'+esc(m)+'</li>').join("")+'</ul>';
+      cont.appendChild(d);
+    });
+  }
+
+  // séquence de révélation d'une épreuve
+  function playReveal(epId){
+    const ep=state.epreuves.find(e=>e.id===epId); if(!ep){ renderDisplay(); return; }
+    snapshotPositions();               // positions AVANT pour les deltas/FLIP
+    showStage("B");                    // on révèle par-dessus le classement
+    const ov=document.getElementById("reveal-overlay");
+    document.getElementById("rev-title").textContent="Résultats — "+ep.nom;
+    const list=document.getElementById("rev-list"); list.innerHTML="";
+    ov.classList.add("on");
+    const pts=eventPoints(ep);
+    // ordonner du 10e (rang le plus grand) au 1er
+    const ordered=[...state.equipes].sort((a,b)=>(ep.rangs[b.id]||0)-(ep.rangs[a.id]||0));
+    ordered.forEach(e=>{
+      const it=document.createElement("div"); it.className="rev-item"+((ep.rangs[e.id]===1)?" first":"");
+      it.innerHTML='<span class="rrank tnum">'+(ep.rangs[e.id]||"–")+'</span><span class="dot" style="background:'+e.couleur+'"></span><span class="rn">'+esc(e.nom)+'</span><span class="rp tnum">+'+fmtPts(pts[e.id]||0)+'</span>';
+      list.appendChild(it);
+    });
+    const items=[...list.children];
+    let i=0;
+    (function tick(){
+      if(i<items.length){ items[i].classList.add("show"); i++; setTimeout(tick,1200); }
+      else { setTimeout(()=>{ ov.classList.remove("on"); renderDisplay(true); },1500); }
+    })();
+  }
+}
+
+/* ============================================================
+   FENÊTRE CONTRÔLE
+   ============================================================ */
+if(!IS_DISPLAY){
+  let displayWin=null;
+  load();
+
+  function pushState(extra){
+    save();
+    if(displayWin && !displayWin.closed){
+      try{ displayWin.postMessage(Object.assign({type:"state",state},extra||{}),"*"); }catch(e){}
+    }
+    renderControl();
+    updateSaveStatus();
+  }
+  function updateSaveStatus(){
+    const el=document.getElementById("save-status");
+    if(!saveOk){ el.textContent="⚠︎ sauvegarde locale indisponible"; el.className="status warn"; }
+    else { el.textContent="✓ sauvegardé"; el.className="status ok"; }
+  }
+  window.addEventListener("message",ev=>{ if((ev.data||{}).type==="display-ready"){ try{ displayWin.postMessage({type:"state",state},"*"); }catch(e){} } });
+
+  document.getElementById("btn-open").onclick=()=>{
+    displayWin=window.open(location.href.split("?")[0]+"?display","olympiades_display","width=1280,height=720");
+    setTimeout(()=>{ try{ displayWin.postMessage({type:"state",state},"*"); }catch(e){} },600);
+  };
+  document.querySelectorAll(".navbtn").forEach(b=>b.onclick=()=>{ state.vueActive=b.dataset.v; pushState(); });
+
+  /* ---- import CSV ---- */
+  function parseCSV(text){
+    const lines=text.split(/\r?\n/).filter(l=>l.trim().length);
+    if(!lines.length) return {err:"Fichier vide"};
+    const delim = (lines[0].split(";").length>=lines[0].split(",").length)?";":",";
+    let rows=lines.map(l=>l.split(delim).map(c=>c.trim()));
+    // header ?
+    const head=rows[0].map(h=>h.toLowerCase());
+    const hasHeader = head.some(h=>/nom|couleur|membre|color|name/.test(h));
+    let colNom=-1,colCol=-1,colMem=[];
+    if(hasHeader){
+      head.forEach((h,i)=>{ if(/^nom|name/.test(h))colNom=i; else if(/couleur|color/.test(h))colCol=i; else if(/membre|member/.test(h))colMem.push(i); });
+      rows=rows.slice(1);
+    } else {
+      // suppose: [nom?],couleur,m1..m7 — détecte couleur = hex
+      const first=rows[0];
+      const hexIdx=first.findIndex(c=>/^#?[0-9a-fA-F]{6}$/.test(c));
+      colCol=hexIdx<0?0:hexIdx; colNom=hexIdx>0?0:-1;
+      for(let i=0;i<first.length;i++){ if(i!==colCol&&i!==colNom) colMem.push(i); }
+    }
+    const teams=rows.slice(0,N_TEAMS).map((r,i)=>{
+      let couleur=colCol>=0?r[colCol]:""; if(couleur&&!couleur.startsWith("#"))couleur="#"+couleur;
+      if(!/^#[0-9a-fA-F]{6}$/.test(couleur)) couleur=DEFAULT_COLORS[i];
+      const membres=colMem.map(ci=>r[ci]||"").slice(0,N_MEMBERS);
+      while(membres.length<N_MEMBERS) membres.push("");
+      return { nom:(colNom>=0&&r[colNom])?r[colNom]:("Équipe "+(i+1)), couleur, membres };
+    });
+    return {teams};
+  }
+  function applyImport(text){
+    const res=parseCSV(text);
+    const msg=document.getElementById("csv-msg");
+    if(res.err){ msg.textContent=res.err; msg.className="msg err"; return; }
+    res.teams.forEach((t,i)=>{ if(i<N_TEAMS){ state.equipes[i].nom=t.nom; state.equipes[i].couleur=t.couleur; state.equipes[i].membres=t.membres; } });
+    msg.textContent="✓ "+res.teams.length+" équipe(s) importée(s). Tu peux ajuster les noms.";
+    msg.className="msg ok";
+    pushState();
+  }
+  document.getElementById("csv-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>applyImport(r.result); r.readAsText(f); };
+  document.getElementById("btn-paste").onclick=()=>{ const ta=document.getElementById("csv-paste"),b=document.getElementById("btn-paste-go"); ta.style.display=b.style.display= ta.style.display==="none"?"block":"none"; };
+  document.getElementById("btn-paste-go").onclick=()=>applyImport(document.getElementById("csv-paste").value);
+
+  /* ---- éditeurs ---- */
+  function renderControl(){
+    // nav active
+    document.querySelectorAll(".navbtn").forEach(b=>b.classList.toggle("active",b.dataset.v===state.vueActive));
+    renderTeamsEditor(); renderEventsEditor(); renderTiebreak(); renderCtrlDetail();
+  }
+  function renderTeamsEditor(){
+    const c=document.getElementById("teams-editor"); c.innerHTML="";
+    state.equipes.forEach((e,i)=>{
+      const det=document.createElement("details");
+      det.innerHTML='<summary><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:'+e.couleur+';vertical-align:middle;margin-right:8px;border:1px solid #fff"></span>'+esc(e.nom)+'</summary>';
+      const row=document.createElement("div"); row.className="teamrow";
+      row.innerHTML='<input type="color" value="'+e.couleur+'" data-i="'+i+'" class="ci-col">'+
+        '<span></span><input type="text" value="'+escAttr(e.nom)+'" placeholder="Nom d\'équipe" data-i="'+i+'" class="ci-nom">';
+      det.appendChild(row);
+      const mem=document.createElement("div"); mem.className="members";
+      e.membres.forEach((m,j)=>{ const inp=document.createElement("input"); inp.type="text"; inp.value=m; inp.placeholder="Membre "+(j+1); inp.dataset.i=i; inp.dataset.j=j; inp.className="ci-mem"; mem.appendChild(inp); });
+      det.appendChild(mem);
+      c.appendChild(det);
+    });
+    c.querySelectorAll(".ci-col").forEach(el=>el.onchange=()=>{ state.equipes[+el.dataset.i].couleur=el.value; pushState(); });
+    c.querySelectorAll(".ci-nom").forEach(el=>el.oninput=()=>{ state.equipes[+el.dataset.i].nom=el.value; pushStateLight(); });
+    c.querySelectorAll(".ci-mem").forEach(el=>el.oninput=()=>{ state.equipes[+el.dataset.i].membres[+el.dataset.j]=el.value; pushStateLight(); });
+  }
+  // maj sans re-render complet du contrôle (évite de perdre le focus en tapant)
+  let lightTimer=null;
+  function pushStateLight(){ save(); if(displayWin&&!displayWin.closed){ try{ displayWin.postMessage({type:"state",state},"*"); }catch(e){} } clearTimeout(lightTimer); lightTimer=setTimeout(()=>{ renderTiebreak(); renderCtrlDetail(); },400); updateSaveStatus(); }
+
+  function renderEventsEditor(){
+    const c=document.getElementById("events-editor"); c.innerHTML="";
+    state.epreuves.forEach((ep,idx)=>{
+      const det=document.createElement("details"); if(!ep.revelee) det.open=true;
+      det.innerHTML='<summary>'+(idx+1)+' · '+esc(ep.nom)+' '+(ep.revelee?'✅ révélée':'⏳ à révéler')+'</summary>';
+      const grid=document.createElement("div"); grid.className="ep-grid";
+      state.equipes.forEach(e=>{
+        const w=document.createElement("div"); w.className="ep-in";
+        w.innerHTML='<span class="cdot" style="background:'+e.couleur+'"></span><span class="nm">'+esc(e.nom)+'</span>';
+        const inp=document.createElement("input"); inp.type="number"; inp.min=1; inp.max=10; inp.value=ep.rangs[e.id]||""; inp.placeholder="rang";
+        inp.onchange=()=>{ const v=parseInt(inp.value,10); if(v>=1&&v<=10)ep.rangs[e.id]=v; else delete ep.rangs[e.id]; pushState(); };
+        w.appendChild(inp); grid.appendChild(w);
+      });
+      det.appendChild(grid);
+      const val=validateEvent(ep);
+      const bar=document.createElement("div"); bar.className="bar";
+      const btn=document.createElement("button"); btn.textContent=ep.revelee?"🔄 Corriger (maj silencieuse)":"🎬 Révéler l'épreuve";
+      btn.className=ep.revelee?"":"accent"; btn.disabled=!val.ok;
+      btn.onclick=()=>{
+        if(!ep.revelee){ ep.revelee=true; save(); renderControl(); if(displayWin&&!displayWin.closed){ try{ displayWin.postMessage({type:"reveal",epreuveId:ep.id,state},"*"); }catch(e){} } state.vueActive="B"; save(); }
+        else { pushState(); } // correction : maj silencieuse
+      };
+      bar.appendChild(btn);
+      const m=document.createElement("span"); m.className="msg "+(val.ok?"ok":"err"); m.textContent=val.ok?(ep.revelee?"Révélée. Toute correction se recalcule sans animation.":"Prêt à révéler."):val.msg;
+      bar.appendChild(m);
+      det.appendChild(bar);
+      c.appendChild(det);
+    });
+  }
+  function refreshEventBtns(){ /* la validation se met à jour au prochain render; léger */ }
+
+  function renderTiebreak(){
+    const c=document.getElementById("tiebreak-editor"); if(!c) return;
+    const cl=classement(); c.innerHTML="";
+    const info=document.createElement("div"); info.className="hint"; info.style.margin="6px 0";
+    info.textContent = state.ordreManuel? "Override manuel actif." : "Aucun override — départage automatique.";
+    c.appendChild(info);
+    const bar=document.createElement("div"); bar.className="bar";
+    // forcer l'ordre des 3 premiers
+    [0,1,2].forEach(k=>{
+      const sel=document.createElement("select");
+      sel.style.cssText="background:#0d0d0f;color:#fff;border:1px solid var(--border);border-radius:8px;padding:8px";
+      state.equipes.forEach(e=>{ const o=document.createElement("option"); o.value=e.id; o.textContent=(k+1)+"e : "+e.nom; sel.appendChild(o); });
+      sel.value=(state.ordreManuel&&state.ordreManuel[k])||cl[k].eq.id;
+      sel.dataset.k=k; sel.className="tb-sel";
+      bar.appendChild(sel);
+    });
+    c.appendChild(bar);
+    const bar2=document.createElement("div"); bar2.className="bar";
+    const apply=document.createElement("button"); apply.textContent="Appliquer le départage manuel"; apply.className="accent";
+    apply.onclick=()=>{ const sels=[...c.querySelectorAll(".tb-sel")]; const ids=sels.map(s=>+s.value); if(new Set(ids).size!==3){ alert("Choisis 3 équipes différentes."); return;} state.ordreManuel=ids; pushState(); };
+    const clear=document.createElement("button"); clear.textContent="Annuler l'override (auto)";
+    clear.onclick=()=>{ state.ordreManuel=null; pushState(); };
+    bar2.appendChild(apply); bar2.appendChild(clear);
+    c.appendChild(bar2);
+  }
+
+  function renderCtrlDetail(){
+    const c=document.getElementById("ctrl-detail"); const t=totals();
+    let html='<table class="grid" style="font-size:14px"><thead><tr><th>Équipe</th>';
+    state.epreuves.forEach(ep=>html+='<th>'+esc(shorten(ep.nom,14))+'</th>'); html+='<th>Total</th></tr></thead><tbody>';
+    classement().forEach(r=>{ const e=r.eq; html+='<tr><td class="tm" style="font-size:14px"><span class="dot" style="width:12px;height:12px;background:'+e.couleur+'"></span>'+esc(e.nom)+'</td>';
+      state.epreuves.forEach(ep=>{ if(!ep.revelee){html+='<td>—</td>';return;} const rg=ep.rangs[e.id]; const p=eventPoints(ep)[e.id]; html+='<td>'+(rg||"–")+' <span style="color:var(--muted)">('+ (p!=null?fmtPts(p):"") +')</span></td>'; });
+      html+='<td class="tot">'+fmtPts(t[e.id])+'</td></tr>'; });
+    html+='</tbody></table>';
+    c.innerHTML=html;
+  }
+
+  document.getElementById("btn-podium-step").onclick=()=>{ state.vueActive="D"; state.podiumStep=Math.min((state.podiumStep||0)+1,4); pushState(); };
+  document.getElementById("btn-podium-reset").onclick=()=>{ state.podiumStep=0; pushState(); };
+  document.getElementById("btn-reset").onclick=()=>{ if(confirm("Tout réinitialiser ? (équipes, rangs, révélations)")){ state=freshState(); pushState(); } };
+
+  renderControl(); updateSaveStatus();
+}
+
+/* ================= UTILS ================= */
+function esc(s){ return String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+function escAttr(s){ return esc(s).replace(/"/g,"&quot;"); }
+function shorten(s,n){ n=n||18; s=String(s||""); return s.length>n? s.slice(0,n-1)+"…":s; }
+</script>
+</body>
+</html>

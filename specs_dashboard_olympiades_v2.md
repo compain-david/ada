@@ -1,8 +1,10 @@
 # Specs — Dashboard Olympiades Alix & David
 
-Version 2 · consolidée, prête pour le développement
+Version 3 · décisions intégrées, prête pour le développement
 
-> Changements v1 → v2 : bonus retiré · règles de calcul (ex aequo, départage) tranchées · comportement de correction simplifié · architecture deux fenêtres durcie · critères de recette ajoutés · raccourcis clavier figés · couleur d'accent proposée.
+> Changements v2 → v3 : import Excel/CSV des équipes · noms éditables en direct · Vue C accessible toute la soirée · nouvelle Vue E « Évolution » (graphe rang par épreuve) · raccourcis clavier supprimés (navigation au clic) · accent ambre confirmé pour le n°1, pas de dégradé sur les données.
+>
+> Changements v1 → v2 : bonus retiré · règles de calcul (ex aequo, départage) tranchées · comportement de correction simplifié · architecture deux fenêtres durcie · critères de recette ajoutés.
 
 ---
 
@@ -18,6 +20,8 @@ Version 2 · consolidée, prête pour le développement
 | Persistance | Sauvegarde automatique à chaque action | Résiste à un rafraîchissement ou une fermeture accidentelle |
 | Thème | Dark uniquement | Projection de nuit en extérieur |
 | Bonus | **Aucun bonus** | Simplifie le modèle et le calcul, aucun objet orphelin |
+| Saisie des équipes | **Import Excel/CSV** en amont (couleurs + 7 membres), noms d'équipe tapés en direct le jour J | Préparation à froid, flexibilité sur les noms le soir même |
+| Navigation | **Au clic uniquement**, pas de raccourcis clavier | Un opérateur seul, moins de charge mentale et d'erreurs en direct |
 
 ---
 
@@ -27,7 +31,7 @@ Deux fenêtres distinctes ouvertes depuis le même fichier. La fenêtre contrôl
 
 ### 2.1 Fenêtre AFFICHAGE (projetée)
 
-Afficheur pur, sans logique de calcul. Elle ne fait que rendre l'état que la fenêtre contrôle lui envoie. Quatre vues :
+Afficheur pur, sans logique de calcul. Elle ne fait que rendre l'état que la fenêtre contrôle lui envoie. Cinq vues :
 
 **Vue A · Équipes** — Affichée pendant l'accueil. Les 10 équipes avec leur couleur, leur nom et les 7 membres.
 
@@ -37,10 +41,12 @@ Afficheur pur, sans logique de calcul. Elle ne fait que rendre l'état que la fe
 
 **Vue D · Podium final** — Révélation progressive 3 puis 2 puis 1, avec les 7 membres de chaque équipe.
 
+**Vue E · Évolution** — Graphe de l'évolution du classement épreuve par épreuve. Accessible toute la soirée, se met à jour à chaque épreuve validée.
+
 ### 2.2 Fenêtre CONTRÔLE (laptop)
 
 Non projetée. Source de vérité unique. Contient :
-- Édition des 10 équipes : nom, couleur, 7 membres
+- Import Excel/CSV des équipes (couleurs + 7 membres), puis édition des 10 équipes : nom, couleur, 7 membres
 - Saisie des rangs par épreuve
 - Bouton de révélation d'épreuve
 - Navigation entre les vues de la fenêtre affichage
@@ -70,7 +76,7 @@ Epreuve {
 Etat {
   equipes: Equipe[10]
   epreuves: Epreuve[5]
-  vueActive: 'A' | 'B' | 'C' | 'D'
+  vueActive: 'A' | 'B' | 'C' | 'D' | 'E'
   ordreDepartageManuel: equipeId[] | null   // override optionnel, voir 3.3
 }
 ```
@@ -164,13 +170,22 @@ Par ligne :
 - Chaque cellule affiche le rang et les points
 - Les épreuves non encore révélées apparaissent grisées
 - Le meilleur rang de chaque colonne est mis en avant
-- Accessible pendant la soirée **et** à la fin *(voir §8, à confirmer)*
+- **Accessible pendant toute la soirée** (pas seulement à la fin)
 
 ### Vue D · Podium final
 - Révélation en 3 temps : 3e, puis 2e, puis 1er
 - Pour chaque équipe révélée : couleur, nom, total, et les 7 membres
 - Le 1er occupe tout l'écran à la fin
 - Ordre garanti sans ex aequo (§3.3)
+
+### Vue E · Évolution
+- **Graphe « bump chart »** : abscisse = les épreuves (départ, puis épreuves 1 à 5), ordonnée = la position au classement (1 en haut, 10 en bas)
+- Une ligne par équipe, à sa couleur, avec la pastille et le nom en bout de ligne
+- On lit d'un coup d'œil qui grimpe, qui décroche, les croisements
+- Seules les épreuves déjà révélées sont tracées ; les suivantes restent vierges
+- Se recompose à chaque épreuve validée (même moteur d'animation, §4)
+- Rendu en **SVG pur**, sans aucune librairie externe (contrainte fichier unique)
+- Alternative possible si tu préfères : courbes de **points cumulés** au lieu du rang — à trancher (§8)
 
 ---
 
@@ -194,8 +209,9 @@ Par ligne :
 - Surfaces : `#18181B` avec bordure `#27272A`
 - Texte principal : `#FAFAFA`
 - Texte secondaire : `#A1A1AA`
-- Accent (top 1) : **`#F59E0B` (ambre chaud) proposé** — chaud, lisible en projection, contraste fort sur fond sombre. À valider ou remplacer.
-- Couleurs d'équipe : saisies à la main par David, 10 teintes distinctes et saturées. Une palette de secours lisible en projection est fournie si besoin (§8).
+- Accent (top 1) : **`#F59E0B` (ambre chaud) — confirmé.** Sémantique de la victoire (or/médaille), contraste chaud-sur-froid maximal en projection. Un seul accent sur les vues projetées ; un éventuel bleu interactif reste cantonné à la fenêtre contrôle non projetée.
+- **Pas de dégradé sur les données.** Les chiffres et noms sont en aplat haut contraste. Les dégradés sont réservés à l'ambiance de fond, jamais aux scores ni aux classements.
+- Couleurs d'équipe : **importées depuis l'Excel** de David (10 teintes distinctes et saturées). Une palette de secours lisible en projection est fournie si besoin (§8).
 
 **Typographie.** Une seule famille sans-serif géométrique, deux graisses maximum. Chiffres en variante tabulaire pour que les colonnes restent alignées. Les points décimaux s'affichent avec au plus une décimale (ex : `8,3`), les entiers sans décimale (ex : `12`).
 
@@ -216,7 +232,7 @@ Par ligne :
 - Chargement automatique de l'état sauvegardé à l'ouverture
 - Bouton de réinitialisation totale, protégé par une confirmation
 - Toute saisie validée reste modifiable, le classement se recalcule immédiatement (§4 ter)
-- Le layout doit tenir en 16:9 sans défilement sur chacune des quatre vues
+- Le layout doit tenir en 16:9 sans défilement sur chacune des cinq vues
 
 ### 7.2 Architecture deux fenêtres — la plus robuste
 
@@ -230,26 +246,38 @@ Objectif : zéro réseau, zéro dépendance, et une synchro qui ne casse pas en 
 - **Persistance** : écriture dans `localStorage` à chaque mutation, encapsulée dans un `try/catch`. Si `localStorage` est indisponible (`file://` bridé), la soirée fonctionne quand même en mémoire ; seule la reprise après fermeture totale est perdue. Un indicateur discret signale à David si la persistance est active.
 - **Navigateur recommandé** : Chrome ou Edge, à **tester sur le laptop réel et le projecteur** au moins une fois avant le soir J (voir recette §9).
 
-### 7.3 Raccourcis clavier (fenêtre contrôle)
+### 7.3 Navigation — au clic
 
-| Touche | Action |
-|---|---|
-| `1` `2` `3` `4` | Basculer l'affichage sur la vue A / B / C / D |
-| `Espace` | Révéler l'épreuve en cours de saisie (si valide) |
-| `→` | Avancer d'un cran dans une révélation par étapes (podium) |
-| `R` | Réinitialiser (demande confirmation) |
+Pas de raccourcis clavier (décision : moins de charge mentale pour un opérateur seul, moins de risque d'erreur en direct). Toute la conduite se fait par des **boutons explicites** dans la fenêtre contrôle :
+- Boutons de bascule de vue : `Équipes` · `Classement` · `Détail` · `Évolution` · `Podium`
+- Bouton `Révéler l'épreuve` (actif seulement si la saisie est valide, §4 bis)
+- Bouton `Étape suivante` pour la révélation par paliers du podium
+- Boutons `Départage manuel`, `Ouvrir l'affichage`, `Réinitialiser`
 
-Les raccourcis n'agissent que dans la fenêtre contrôle ; la fenêtre affichage ne capte aucune touche.
+La fenêtre affichage ne capte aucune interaction ; elle ne fait qu'afficher.
+
+### 7.4 Import des équipes (Excel / CSV)
+
+- David prépare en amont un fichier (couleurs + 7 membres par équipe). Le format attendu est documenté : une ligne par équipe, colonnes `couleur` (hex) puis `membre1 … membre7`. Le **nom d'équipe est optionnel** dans le fichier et peut être laissé vide.
+- Import par **collage de contenu CSV** ou **sélection de fichier** dans la fenêtre contrôle. Le parsing est fait en JavaScript pur, **sans librairie** (contrainte fichier unique). Le `.xlsx` binaire n'est pas lisible sans dépendance : David exporte sa feuille en **CSV** (un clic dans Excel), ou colle directement les cellules.
+- Après import, chaque équipe reste **entièrement éditable** : le jour J, David tape les **noms d'équipe** en direct et peut ajuster une couleur ou un prénom.
+- Un modèle de fichier CSV prêt à remplir est fourni avec le livrable.
 
 ---
 
-## 8. Points à confirmer avant développement
+## 8. Points tranchés et derniers arbitrages
 
-1. Les 10 couleurs d'équipe : tu les fournis ou je propose une palette lisible en projection.
-2. La couleur d'accent : je propose `#F59E0B` (ambre) — tu valides ou tu changes.
-3. Départage : je code **le palmarès rang par rang en automatique** + **override manuel** pour l'épreuve de barrage. OK pour toi ?
-4. Vue Détail par épreuve : accessible pendant toute la soirée, ou seulement à la fin ?
-5. Raccourcis clavier du §7.3 : ça te convient ou tu veux un autre mapping ?
+**Tranché (v3)**
+- Couleurs + membres : importés depuis l'Excel/CSV de David ; noms d'équipe tapés en direct. ✅
+- Accent `#F59E0B` (ambre) pour le n°1, pas de dégradé sur les données. ✅
+- Départage : palmarès rang par rang automatique + override manuel (barrage). ✅
+- Vue Détail (C) : accessible toute la soirée. ✅
+- Navigation au clic, pas de raccourcis clavier. ✅
+- Nouvelle Vue E « Évolution » (graphe rang par épreuve). ✅
+
+**Derniers arbitrages mineurs (non bloquants, défaut proposé)**
+1. Vue E : axe = **rang** (bump chart) *(défaut)* ou **points cumulés** (courbes) ? Le rang est plus lisible pour « qui grimpe ».
+2. Palette d'équipe de secours : je la prépare **au cas où** ton Excel n'aurait pas de couleurs — OK ?
 
 ---
 
@@ -258,7 +286,9 @@ Les raccourcis n'agissent que dans la fenêtre contrôle ; la fenêtre affichage
 À vérifier une fois avant l'événement, sur le matériel réel :
 
 - [ ] Ouverture du fichier → fenêtre contrôle s'affiche, bouton « Ouvrir l'affichage » fonctionne, affichage apparaît sur le 2e écran.
-- [ ] Les 4 vues (A, B, C, D) tiennent en 16:9 **sans défilement**, texte lisible à 5 m.
+- [ ] Import CSV des équipes → couleurs et 7 membres chargés ; édition d'un nom d'équipe en direct répercutée sur l'affichage.
+- [ ] Les 5 vues (A, B, C, D, E) tiennent en 16:9 **sans défilement**, texte lisible à 5 m.
+- [ ] Vue E : après chaque épreuve validée, la ligne de chaque équipe se prolonge à sa nouvelle position ; croisements lisibles.
 - [ ] Saisie des 10 rangs d'une épreuve, révélation : lignes du 10e au 1er à 1,2 s, puis réordonnancement animé 800 ms avec flèches de variation.
 - [ ] Ex aequo : deux équipes au même rang → points = moyenne attendue (ex : 11 pour un ex aequo 1-2), classement correct.
 - [ ] Correction d'une épreuve déjà révélée → totaux et classement mis à jour **sans animation**.

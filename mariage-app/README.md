@@ -26,9 +26,15 @@ Tableau de bord de soirée pour animer un tournoi par équipes, **100 % local**,
 3. Dans la fenêtre contrôle : **« 📄 Importer un CSV »** (ou « 📋 Coller un CSV »).
 4. Le jour J, tape les **noms d'équipe** directement dans l'éditeur.
 
+## L'interface de contrôle
+
+- **Barre latérale (onglets)** : `Équipes` · `Épreuves` · `Podium` · `Détail`. Chaque onglet ouvre son panneau — plus de longue page qui défile.
+- **« Écran projeté »** (en haut) : choisis ce que le public voit — `Équipes` · `Classement` · `Détail` · `Évolution` · `Podium`.
+- **Points masqués / affichés** : un interrupteur. Par défaut les **points sont masqués** (on montre le classement et le graphe, pas les chiffres) ; active-le si tu veux afficher les points.
+
 ## Tester tout de suite (mode démo)
 
-En bas de la fenêtre contrôle, clique **« 🎲 Charger la démo »** : ça remplit 10 équipes (noms, couleurs, membres) avec 4 épreuves déjà révélées et la 5e prête à révéler. Tu peux alors parcourir toutes les vues, jouer la révélation de la dernière épreuve, dérouler le podium et tester le départage — sans rien saisir. Un **« 🗑️ Réinitialiser tout »** efface la démo quand tu veux passer au vrai.
+Dans la barre latérale, clique **« 🎲 Charger la démo »** : ça remplit 10 équipes (noms, couleurs, membres) et les 5 épreuves **pré-remplies mais non révélées**. Va dans l'onglet **Épreuves** et **révèle-les une par une** pour voir l'animation et le **graphe d'évolution se construire étape par étape**, puis déroule le podium. Un **« 🗑️ Réinitialiser »** efface la démo pour passer au vrai.
 
 ## Déroulé d'une épreuve
 

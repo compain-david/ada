@@ -1,7 +1,9 @@
 # Specs — Dashboard Olympiades Alix & David
 
-Version 3 · décisions intégrées, prête pour le développement
+Version 4 · décisions intégrées, prête pour le développement
 
+> Changements v3 → v4 : Vue C réorganisée en deux zones (classement + détail), sans scroll sur la projection, avec défilement réservé à la fenêtre contrôle · Vue E affiche le rang seul, aucun point (suspense préservé) · règles de lisibilité des couleurs d'équipe sur fond sombre (liseré, jamais la couleur seule, daltonisme) · n°1 distingué par ambre + icône, pas par la couleur seule.
+>
 > Changements v2 → v3 : import Excel/CSV des équipes · noms éditables en direct · Vue C accessible toute la soirée · nouvelle Vue E « Évolution » (graphe rang par épreuve) · raccourcis clavier supprimés (navigation au clic) · accent ambre confirmé pour le n°1, pas de dégradé sur les données.
 >
 > Changements v1 → v2 : bonus retiré · règles de calcul (ex aequo, départage) tranchées · comportement de correction simplifié · architecture deux fenêtres durcie · critères de recette ajoutés.
@@ -166,11 +168,13 @@ Par ligne :
 - Le top 3 est visuellement distingué
 
 ### Vue C · Détail par épreuve
-- 10 lignes, 7 colonnes : équipe, puis les 5 épreuves, puis total
-- Chaque cellule affiche le rang et les points
-- Les épreuves non encore révélées apparaissent grisées
-- Le meilleur rang de chaque colonne est mis en avant
-- **Accessible pendant toute la soirée** (pas seulement à la fin)
+Organisée en **deux zones empilées**, qui tiennent ensemble en 16:9 **sans défilement sur la projection** :
+- **Zone haute — Classement** : rang, pastille, nom, total cumulé ; top 3 distingué. Vue de synthèse « qui est où ».
+- **Zone basse — Grille par épreuve** : 10 équipes en lignes × 5 épreuves en colonnes ; chaque cellule = rang (gros) + points (petit).
+- Les épreuves non encore révélées apparaissent grisées.
+- Le meilleur rang de chaque colonne est mis en avant.
+- **Sur la fenêtre contrôle** : le même tableau détaillé est disponible **avec défilement**, pour que David fouille le détail des points sans la contrainte d'écran — cette version enrichie n'est pas projetée.
+- **Accessible pendant toute la soirée** (pas seulement à la fin).
 
 ### Vue D · Podium final
 - Révélation en 3 temps : 3e, puis 2e, puis 1er
@@ -182,10 +186,10 @@ Par ligne :
 - **Graphe « bump chart »** : abscisse = les épreuves (départ, puis épreuves 1 à 5), ordonnée = la position au classement (1 en haut, 10 en bas)
 - Une ligne par équipe, à sa couleur, avec la pastille et le nom en bout de ligne
 - On lit d'un coup d'œil qui grimpe, qui décroche, les croisements
+- **Aucun point affiché sur cette vue** : on ne montre que la **position**, pour préserver le suspense sur les écarts. Les points restent réservés aux vues B et C.
 - Seules les épreuves déjà révélées sont tracées ; les suivantes restent vierges
 - Se recompose à chaque épreuve validée (même moteur d'animation, §4)
 - Rendu en **SVG pur**, sans aucune librairie externe (contrainte fichier unique)
-- Alternative possible si tu préfères : courbes de **points cumulés** au lieu du rang — à trancher (§8)
 
 ---
 
@@ -210,8 +214,12 @@ Par ligne :
 - Texte principal : `#FAFAFA`
 - Texte secondaire : `#A1A1AA`
 - Accent (top 1) : **`#F59E0B` (ambre chaud) — confirmé.** Sémantique de la victoire (or/médaille), contraste chaud-sur-froid maximal en projection. Un seul accent sur les vues projetées ; un éventuel bleu interactif reste cantonné à la fenêtre contrôle non projetée.
+- **Le n°1 est distingué par l'ambre + une icône (couronne/médaille), jamais par la couleur seule** — pour éviter toute confusion si une équipe a une teinte proche de l'ambre.
 - **Pas de dégradé sur les données.** Les chiffres et noms sont en aplat haut contraste. Les dégradés sont réservés à l'ambiance de fond, jamais aux scores ni aux classements.
-- Couleurs d'équipe : **importées depuis l'Excel** de David (10 teintes distinctes et saturées). Une palette de secours lisible en projection est fournie si besoin (§8).
+- Couleurs d'équipe : **importées depuis l'Excel** de David (10 teintes distinctes et saturées). Règles de lisibilité en projection :
+  - chaque pastille est **cerclée d'un fin liseré clair**, pour que toute teinte (même sombre) ressorte sur le fond `#09090B` ;
+  - **jamais d'information codée par la couleur seule** : toujours **couleur + nom + position** ensemble (lisibilité + daltonisme) ;
+  - une **palette de secours** lisible en projection est fournie au cas où l'Excel n'aurait pas de couleurs (§8).
 
 **Typographie.** Une seule famille sans-serif géométrique, deux graisses maximum. Chiffres en variante tabulaire pour que les colonnes restent alignées. Les points décimaux s'affichent avec au plus une décimale (ex : `8,3`), les entiers sans décimale (ex : `12`).
 
@@ -267,17 +275,16 @@ La fenêtre affichage ne capte aucune interaction ; elle ne fait qu'afficher.
 
 ## 8. Points tranchés et derniers arbitrages
 
-**Tranché (v3)**
-- Couleurs + membres : importés depuis l'Excel/CSV de David ; noms d'équipe tapés en direct. ✅
-- Accent `#F59E0B` (ambre) pour le n°1, pas de dégradé sur les données. ✅
+**Tout est tranché (v4).**
+- Couleurs + membres : importés depuis l'Excel/CSV de David ; noms d'équipe tapés en direct le jour J. ✅
+- Accent `#F59E0B` (ambre) pour le n°1 (ambre + icône, jamais couleur seule), pas de dégradé sur les données. ✅
+- Lisibilité couleurs d'équipe : liseré clair, jamais la couleur seule, palette de secours prête. ✅
 - Départage : palmarès rang par rang automatique + override manuel (barrage). ✅
-- Vue Détail (C) : accessible toute la soirée. ✅
+- Vue C : deux zones (classement + détail), sans scroll en projection, défilement réservé au contrôle ; accessible toute la soirée. ✅
+- Vue E « Évolution » : bump chart du **rang seul, sans points** (suspense). ✅
 - Navigation au clic, pas de raccourcis clavier. ✅
-- Nouvelle Vue E « Évolution » (graphe rang par épreuve). ✅
 
-**Derniers arbitrages mineurs (non bloquants, défaut proposé)**
-1. Vue E : axe = **rang** (bump chart) *(défaut)* ou **points cumulés** (courbes) ? Le rang est plus lisible pour « qui grimpe ».
-2. Palette d'équipe de secours : je la prépare **au cas où** ton Excel n'aurait pas de couleurs — OK ?
+Plus aucun point bloquant : la spec est prête pour le prototype.
 
 ---
 
@@ -288,7 +295,9 @@ La fenêtre affichage ne capte aucune interaction ; elle ne fait qu'afficher.
 - [ ] Ouverture du fichier → fenêtre contrôle s'affiche, bouton « Ouvrir l'affichage » fonctionne, affichage apparaît sur le 2e écran.
 - [ ] Import CSV des équipes → couleurs et 7 membres chargés ; édition d'un nom d'équipe en direct répercutée sur l'affichage.
 - [ ] Les 5 vues (A, B, C, D, E) tiennent en 16:9 **sans défilement**, texte lisible à 5 m.
-- [ ] Vue E : après chaque épreuve validée, la ligne de chaque équipe se prolonge à sa nouvelle position ; croisements lisibles.
+- [ ] Vue E : après chaque épreuve validée, la ligne de chaque équipe se prolonge à sa nouvelle position ; croisements lisibles ; **aucun point affiché**.
+- [ ] Vue C : sur la projection, classement + grille par épreuve tiennent **sans scroll** ; sur le contrôle, le détail défile.
+- [ ] Pastilles d'équipe : chaque teinte, même sombre, reste lisible grâce au liseré ; le n°1 porte l'icône, pas seulement l'ambre.
 - [ ] Saisie des 10 rangs d'une épreuve, révélation : lignes du 10e au 1er à 1,2 s, puis réordonnancement animé 800 ms avec flèches de variation.
 - [ ] Ex aequo : deux équipes au même rang → points = moyenne attendue (ex : 11 pour un ex aequo 1-2), classement correct.
 - [ ] Correction d'une épreuve déjà révélée → totaux et classement mis à jour **sans animation**.
